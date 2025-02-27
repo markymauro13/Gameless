@@ -8,17 +8,28 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        ZStack {
+            // Dark background for the entire app
+            Color(red: 0.05, green: 0.05, blue: 0.15)
+                .edgesIgnoringSafeArea(.all)
+            
+            if hasCompletedOnboarding {
+                // Main app interface
+                MainTabView()
+            } else {
+                // Onboarding flow
+                OnboardingView()
+            }
         }
-        .padding()
+        .preferredColorScheme(.dark)
     }
 }
 
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
