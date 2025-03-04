@@ -7,6 +7,18 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Dashboard", systemImage: "house")
                 }
+            RecoveryView()
+                .tabItem {
+                    Label("Recovery", systemImage: "heart")
+                }
+            LimitLoggerView()
+                .tabItem {
+                    Label("Limit Logger", systemImage: "clock")
+                }
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
         }
     }
 }
