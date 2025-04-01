@@ -104,20 +104,22 @@ struct DashboardView: View {
                                     .frame(width: geometry.size.width, height: 10)
                                     .foregroundColor(Color.white.opacity(0.1))
                                 
-                                // Progress fill with gradient
-                                RoundedRectangle(cornerRadius: 6)
-                                    .frame(width: min(CGFloat(viewModel.user.currentXP)/CGFloat(viewModel.user.maxXP) * geometry.size.width, geometry.size.width), height: 10)
-                                    .background(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.green.opacity(0.7), Color.green]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                                    )
+                                // Progress fill with gradient - FIXED VERSION
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.green.opacity(0.7), Color.green]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .frame(width: min(CGFloat(viewModel.user.currentXP)/CGFloat(viewModel.user.maxXP) * geometry.size.width, geometry.size.width), height: 10)
                             }
                         }
                         .frame(height: 10)
+                        
+                        // Add a debug print to check values
+                        .onAppear {
+                            print("XP Values: \(viewModel.user.currentXP)/\(viewModel.user.maxXP)")
+                        }
                         
                         // XP text with improved layout
                         HStack {
@@ -167,6 +169,27 @@ struct DashboardView: View {
                 
                 // Action buttons
                 HStack(spacing: 20) {
+                    // Daily check-in button
+                    Button(action: {
+                        viewModel.performDailyCheckIn()
+                    }) {
+                        VStack(spacing: 8) {
+                            Circle()
+                                .fill(viewModel.hasCheckedInToday ? Color.gray.opacity(0.3) : Color.green.opacity(0.6))
+                                .frame(width: 60, height: 60)
+                                .overlay(
+                                    Image(systemName: "calendar.badge.checkmark")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(viewModel.hasCheckedInToday ? .gray : .white)
+                                )
+                            
+                            Text("daily check-in")
+                                .font(.system(size: 12))
+                                .foregroundColor(viewModel.hasCheckedInToday ? .gray : .white)
+                        }
+                    }
+                    .disabled(viewModel.hasCheckedInToday)
+                    
                     // Skill check button
                     Button(action: {
                         viewModel.performSkillCheck()

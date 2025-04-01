@@ -8,16 +8,17 @@ struct StatsEditorView: View {
     @State private var streakDays: Int = 0
     @State private var totalHours: Int = 0
     @State private var currentXP: Int = 0
+    @State private var maxXP: Int = 100
     
     // Preset profiles
     let presetProfiles: [PresetProfile] = [
-        PresetProfile(name: "New User", days: 0, xp: 0, color: .gray),
-        PresetProfile(name: "1 Week", days: 7, xp: 30, color: .blue),
-        PresetProfile(name: "2 Weeks", days: 14, xp: 45, color: .green),
-        PresetProfile(name: "1 Month", days: 30, xp: 60, color: .purple),
-        PresetProfile(name: "3 Months", days: 90, xp: 75, color: .orange),
-        PresetProfile(name: "6 Months", days: 180, xp: 85, color: .red),
-        PresetProfile(name: "1 Year", days: 365, xp: 95, color: .pink)
+        PresetProfile(name: "New User", days: 0, xp: 0, maxXP: 100, color: .gray),
+        PresetProfile(name: "1 Week", days: 7, xp: 30, maxXP: 100, color: .blue),
+        PresetProfile(name: "2 Weeks", days: 14, xp: 45, maxXP: 120, color: .green),
+        PresetProfile(name: "1 Month", days: 30, xp: 60, maxXP: 150, color: .purple),
+        PresetProfile(name: "3 Months", days: 90, xp: 75, maxXP: 200, color: .orange),
+        PresetProfile(name: "6 Months", days: 180, xp: 85, maxXP: 250, color: .red),
+        PresetProfile(name: "1 Year", days: 365, xp: 95, maxXP: 300, color: .pink)
     ]
     
     // XP presets
@@ -48,7 +49,7 @@ struct StatsEditorView: View {
                             HStack(spacing: 12) {
                                 ForEach(presetProfiles) { profile in
                                     Button(action: {
-                                        applyPreset(days: profile.days, xp: profile.xp)
+                                        applyPreset(days: profile.days, xp: profile.xp, maxXP: profile.maxXP)
                                     }) {
                                         VStack(spacing: 6) {
                                             Text(profile.name)
@@ -145,7 +146,7 @@ struct StatsEditorView: View {
                                 
                                 Spacer()
                                 
-                                Text("\(currentXP)/100")
+                                Text("\(currentXP)/\(maxXP)")
                                     .font(.system(size: 16, weight: .bold))
                                     .foregroundColor(.white)
                             }
@@ -153,8 +154,29 @@ struct StatsEditorView: View {
                             Slider(value: Binding(
                                 get: { Double(currentXP) },
                                 set: { currentXP = Int($0) }
-                            ), in: 0...100, step: 1)
+                            ), in: 0...Double(maxXP), step: 1)
                             .accentColor(.green)
+                        }
+                        
+                        // Max XP
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Max XP")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Text("\(maxXP)")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Slider(value: Binding(
+                                get: { Double(maxXP) },
+                                set: { maxXP = Int($0) }
+                            ), in: 50...500, step: 10)
+                            .accentColor(.orange)
                         }
                         
                         // Rank preview
@@ -215,21 +237,23 @@ struct StatsEditorView: View {
                     // Initialize with current values
                     streakDays = viewModel.user.streakDays
                     currentXP = viewModel.user.currentXP
+                    maxXP = viewModel.user.maxXP
                     totalHours = viewModel.user.totalHours
                 }
             }
         }
     }
     
-    private func applyPreset(days: Int, xp: Int) {
+    private func applyPreset(days: Int, xp: Int, maxXP: Int) {
         streakDays = days
         currentXP = xp
+        self.maxXP = maxXP
         totalHours = days * 24
     }
     
     private func applyChanges() {
         // Update user stats through the ViewModel
-        viewModel.updateUserStats(streakDays: streakDays, currentXP: currentXP)
+        viewModel.updateUserStats(streakDays: streakDays, currentXP: currentXP, maxXP: maxXP)
     }
 }
 
@@ -239,6 +263,7 @@ struct PresetProfile: Identifiable {
     let name: String
     let days: Int
     let xp: Int
+    let maxXP: Int
     let color: Color
 }
 

@@ -3,16 +3,18 @@ import SwiftUI
 struct LimitLoggerView: View {
     // State variables
     @State private var showingAddSession = false
+    @State private var showingLimitEditor = false
     @State private var sessionDate = Date()
     @State private var sessionHours = 1.0
     @State private var sessionMinutes = 0
     @State private var sessionGame = ""
     @State private var sessionNotes = ""
+    @State private var newGamingLimit: Double = 1.0
     
-    // Sample data - would be replaced with actual data storage
-    @State private var gamingSessions: [GamingSession] = []
+    // Use ObservableObject for session management
+    @StateObject private var viewModel = LimitLoggerViewModel()
     
-    // User's daily limit (would be loaded from UserDefaults in a real app)
+    // User's daily limit from data manager
     @AppStorage("gamingLimit") private var gamingLimit: Double = 1.0
     
     var body: some View {
@@ -47,7 +49,8 @@ struct LimitLoggerView: View {
                         .foregroundColor(.white)
                     
                     Button(action: {
-                        // Would open a limit editor
+                        newGamingLimit = gamingLimit // Initialize with current value
+                        showingLimitEditor = true
                     }) {
                         Text("Change Limit")
                             .font(.subheadline)
@@ -85,7 +88,7 @@ struct LimitLoggerView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
                     
-                    let todayUsage = calculateTodayUsage()
+                    let todayUsage = viewModel.calculateTodayUsage()
                     let percentage = min(Double(todayUsage) / (gamingLimit * 60), 1.0)
                     
                     // Progress bar
@@ -107,13 +110,13 @@ struct LimitLoggerView: View {
                     
                     // Usage text
                     HStack {
-                        Text("\(formatMinutes(todayUsage))")
+                        Text("\(viewModel.formatMinutes(todayUsage))")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white)
                         
                         Spacer()
                         
-                        Text("\(formatMinutes(Int(gamingLimit * 60)))")
+                        Text("\(viewModel.formatMinutes(Int(gamingLimit * 60)))")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -127,7 +130,7 @@ struct LimitLoggerView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
                     
-                    if gamingSessions.isEmpty {
+                    if viewModel.gamingSessions.isEmpty {
                         VStack {
                             Image(systemName: "gamecontroller")
                                 .font(.system(size: 40))
@@ -142,7 +145,7 @@ struct LimitLoggerView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 12) {
-                                ForEach(gamingSessions) { session in
+                                ForEach(viewModel.gamingSessions) { session in
                                     SessionRow(session: session)
                                 }
                             }
@@ -163,9 +166,12 @@ struct LimitLoggerView: View {
                         Text("Log Gaming Session")
                             .fontWeight(.semibold)
                     }
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding(.vertical, 16)
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.blue)
+                    .cornerRadius(12)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
@@ -174,101 +180,24 @@ struct LimitLoggerView: View {
         .sheet(isPresented: $showingAddSession) {
             AddSessionView(
                 isPresented: $showingAddSession,
-                date: $sessionDate,
-                hours: $sessionHours,
-                minutes: $sessionMinutes,
-                game: $sessionGame,
-                notes: $sessionNotes,
-                onSave: saveSession
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showingLimitEditor) {
+            LimitEditorView(
+                isPresented: $showingLimitEditor,
+                currentLimit: gamingLimit,
+                newLimit: $newGamingLimit,
+                onSave: {
+                    gamingLimit = newGamingLimit
+                    viewModel.updateGamingLimit(newGamingLimit)
+                }
             )
         }
         .onAppear {
             // Load saved sessions
-            loadSessions()
+            viewModel.loadSessions()
         }
-    }
-    
-    // Calculate today's usage in minutes
-    private func calculateTodayUsage() -> Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        
-        return gamingSessions
-            .filter { calendar.isDate($0.date, inSameDayAs: today) }
-            .reduce(0) { $0 + $1.durationMinutes }
-    }
-    
-    // Format minutes as "X hr Y min"
-    private func formatMinutes(_ minutes: Int) -> String {
-        let hours = minutes / 60
-        let mins = minutes % 60
-        
-        if hours > 0 {
-            return "\(hours) hr \(mins) min"
-        } else {
-            return "\(mins) min"
-        }
-    }
-    
-    // Save a new gaming session
-    private func saveSession() {
-        let totalMinutes = Int(sessionHours * 60) + sessionMinutes
-        
-        let newSession = GamingSession(
-            id: UUID(),
-            date: sessionDate,
-            durationMinutes: totalMinutes,
-            game: sessionGame,
-            notes: sessionNotes
-        )
-        
-        gamingSessions.append(newSession)
-        gamingSessions.sort { $0.date > $1.date } // Sort by most recent
-        
-        // Reset form
-        sessionDate = Date()
-        sessionHours = 1.0
-        sessionMinutes = 0
-        sessionGame = ""
-        sessionNotes = ""
-        
-        // Save to persistent storage (would implement with UserDefaults or CoreData)
-        saveSessions()
-    }
-    
-    // Load sessions from storage
-    private func loadSessions() {
-        // In a real app, this would load from UserDefaults or CoreData
-        // For now, we'll just use sample data
-        if gamingSessions.isEmpty {
-            let calendar = Calendar.current
-            let today = Date()
-            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-            
-            gamingSessions = [
-                GamingSession(
-                    id: UUID(),
-                    date: today,
-                    durationMinutes: 45,
-                    game: "Fortnite",
-                    notes: "Quick match with friends"
-                ),
-                GamingSession(
-                    id: UUID(),
-                    date: yesterday,
-                    durationMinutes: 90,
-                    game: "Minecraft",
-                    notes: "Building project"
-                )
-            ]
-        }
-    }
-    
-    // Save sessions to storage
-    private func saveSessions() {
-        // In a real app, this would save to UserDefaults or CoreData
-        // For now, we'll just print to console
-        print("Saved \(gamingSessions.count) sessions")
     }
 }
 
@@ -327,167 +256,6 @@ struct SessionRow: View {
             return "\(hours)h \(mins)m"
         } else {
             return "\(mins)m"
-        }
-    }
-}
-
-// Add session view
-struct AddSessionView: View {
-    @Binding var isPresented: Bool
-    @Binding var date: Date
-    @Binding var hours: Double
-    @Binding var minutes: Int
-    @Binding var game: String
-    @Binding var notes: String
-    var onSave: () -> Void
-    
-    @State private var selectedTab = 0
-    @FocusState private var isGameFieldFocused: Bool
-    @FocusState private var isNotesFieldFocused: Bool
-    
-    // Popular games for quick selection
-    let popularGames = [
-        "Fortnite", "Minecraft", "Call of Duty", "League of Legends",
-        "Valorant", "Apex Legends", "Roblox", "GTA V",
-        "FIFA", "Overwatch", "Dota 2", "CS:GO"
-    ]
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color(red: 0.05, green: 0.05, blue: 0.15)
-                    .edgesIgnoringSafeArea(.all)
-                
-                VStack(spacing: 20) {
-                    // Date picker
-                    DatePicker("Session Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                        .datePickerStyle(.compact)
-                        .foregroundColor(.white)
-                        .accentColor(.blue)
-                        .padding(.horizontal, 20)
-                    
-                    // Duration picker
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Duration")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        HStack {
-                            // Hours
-                            VStack {
-                                Text("\(Int(hours)) hour\(hours == 1 ? "" : "s")")
-                                    .foregroundColor(.white)
-                                
-                                Slider(value: $hours, in: 0...8, step: 1)
-                                    .accentColor(.blue)
-                            }
-                            
-                            // Minutes
-                            VStack {
-                                Text("\(minutes) minute\(minutes == 1 ? "" : "s")")
-                                    .foregroundColor(.white)
-                                
-                                Picker("Minutes", selection: $minutes) {
-                                    ForEach(0..<60) { minute in
-                                        if minute % 5 == 0 {
-                                            Text("\(minute)").tag(minute)
-                                        }
-                                    }
-                                }
-                                .pickerStyle(.wheel)
-                                .frame(height: 100)
-                                .clipped()
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Game selection
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Game")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        TextField("Game name", text: $game)
-                            .padding()
-                            .background(Color(red: 0.1, green: 0.1, blue: 0.2))
-                            .cornerRadius(8)
-                            .foregroundColor(.white)
-                            .focused($isGameFieldFocused)
-                        
-                        // Popular games
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(popularGames, id: \.self) { gameName in
-                                    Button(action: {
-                                        game = gameName
-                                    }) {
-                                        Text(gameName)
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                            .padding(.vertical, 8)
-                                            .padding(.horizontal, 12)
-                                            .background(game == gameName ? Color.blue : Color(red: 0.1, green: 0.1, blue: 0.2))
-                                            .cornerRadius(16)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Notes
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Notes (Optional)")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        TextEditor(text: $notes)
-                            .frame(height: 100)
-                            .padding(4)
-                            .background(Color(red: 0.1, green: 0.1, blue: 0.2))
-                            .cornerRadius(8)
-                            .foregroundColor(.white)
-                            .focused($isNotesFieldFocused)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
-                    
-                    // Save button
-                    Button(action: {
-                        onSave()
-                        isPresented = false
-                    }) {
-                        Text("Save Session")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.purple.opacity(0.7), Color.green]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
-                    .disabled(hours == 0 && minutes == 0) // Prevent empty durations
-                }
-                .navigationTitle("Log Gaming Session")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            isPresented = false
-                        }
-                        .foregroundColor(.white)
-                    }
-                }
-            }
         }
     }
 }
